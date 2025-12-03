@@ -21,38 +21,50 @@ sourceSets {
     main
 }
 
-tasks.withType(Jar).configureEach {
+tasks.withType(Jar).all { jarTask ->
     def sharedLibraryTasks = project('tracy-jni').tasks.withType(LinkSharedLibrary)
-    dependsOn sharedLibraryTasks
+    jarTask.dependsOn(sharedLibraryTasks)
+
     def sharedLibraryOutputs = sharedLibraryTasks.find { task ->
         task.name.toLowerCase().contains("release")
-    }.outputs.files.asFileTree.files
-    from(sharedLibraryOutputs) {
-        include("*.dll")
-        into("windows")
+    }?.outputs?.files?.asFileTree?.files ?: []
+
+    jarTask.from(sharedLibraryOutputs) {
+        include "*.dll"
+        into "windows"
     }
-    from(sharedLibraryOutputs) {
-        include("*.so")
-        into("linux")
+    jarTask.from(sharedLibraryOutputs) {
+        include "*.so"
+        into "linux"
     }
-    from(sharedLibraryOutputs) {
-        include("*.dylib")
-        into("macosx")
+    jarTask.from(sharedLibraryOutputs) {
+        include "*.dylib"
+        into "macosx"
     }
-    from (new File(project('tracy-jni').projectDir, "tracy")) {
-        include("LICENSE")
-        rename("LICENSE", "TRACY_LICENSE")
+
+    jarTask.from(new File(project('tracy-jni').projectDir, "tracy")) {
+        include "LICENSE"
+        rename "LICENSE", "TRACY_LICENSE"
     }
 }
 
-tasks.named("test", Test) {
-    useJUnitPlatform()
-
-    maxHeapSize = "1G"
-
-    testLogging {
-        events("passed")
+tasks.named("test").configure { Test testTask ->
+    testTask.useJUnitPlatform()
+ 
+    testTask.maxHeapSize = "1G"
+ 
+    testTask.testLogging {
+        events "passed"
     }
-
-    systemProperty "java.library.path", project(":tracy-jni").getLayout().getBuildDirectory().dir("lib/main/debug").get().asFile.absolutePath
+ 
+    testTask.systemProperty(
+            "java.library.path",
+            project(":tracy-jni")
+                    .layout
+                    .buildDirectory
+                    .dir("lib/main/debug")
+                    .get()
+                    .asFile
+                    .absolutePath
+    )
 }
