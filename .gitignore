@@ -5,3 +5,4 @@
 build
 out
 tracy-jni/build
+.idea/
